@@ -11,7 +11,7 @@
 a{color:inherit}.bar a{color:#fff;text-decoration:none}.brand{font-weight:800;letter-spacing:.2px}
 .card{background:#fff;border:1px solid #e0e7f0;border-radius:16px;padding:20px;margin:15px 0;box-shadow:0 6px 22px #13294b08}
 h1,h2{margin:0 0 8px}h1{font-size:25px}h2{font-size:19px}.muted,.notice{color:#64748b}.muted{margin:4px 0 0}
-.field{display:grid;gap:6px;margin:10px 0}.field input,.field select,.field textarea,.search,.statusSelect{padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;width:100%;background:#fff}
+.field{display:grid;gap:6px;margin:10px 0}.field input,.field select,.field textarea,.search{padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;width:100%;background:#fff}
 button{background:#1478e8;color:#fff;border:0;padding:11px 15px;border-radius:9px;font-weight:700;cursor:pointer}
 button.secondary{background:#e8eef6;color:#17233b}button.danger{background:#fff0f0;color:#b42318}button:disabled{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
@@ -68,7 +68,7 @@ Mot de passe oublié ?</button><p id="loginMsg" class="notice" role="status"></p
 <div class="field"><label for="c_nom">Nom *</label><input id="c_nom" name="nom" required maxlength="120"></div>
 <div class="field"><label for="c_entreprise">Entreprise</label><input id="c_entreprise" name="entreprise" maxlength="160"></div>
 <div class="field"><label for="c_email">E-mail</label><input id="c_email" name="email" type="email" maxlength="200"></div>
-<div class="field"><label for="c_tel">Téléphone</label><input id="c_tel" name="telephone" maxlength="40"></div><div class="field"><label for="c_notes">Notes CRM</label><input id="c_notes" name="notes" maxlength="1000" placeholder="Suivi commercial interne"></div>
+<div class="field"><label for="c_tel">Téléphone</label><input id="c_tel" name="telephone" maxlength="40"></div>
 <div class="field" style="align-self:end"><button id="clientBtn">Enregistrer le client</button></div></form><p id="clientMsg" class="notice" role="status"></p></div>
 <div class="card"><h2>Créer un devis</h2><p class="muted">Le devis est créé en brouillon. Le montant TTC est calculé automatiquement.</p>
 <form id="quoteForm" class="grid">
@@ -89,7 +89,7 @@ let current='demandes', rows=[], columns=[];
 const defs={
  demandes:{label:'Demandes reçues',cols:['nom','entreprise','email','telephone','offre','statut','created_at'],order:'created_at'},
  clients:{label:'Clients',cols:['nom','entreprise','email','telephone','created_at'],order:'created_at'},
- devis:{label:'Devis',cols:['numero','titre','client_id','montant_ht','tva','montant_ttc','statut','date_emission'],order:'date_emission'},
+ devis:{label:'Devis',cols:['numero','titre','montant_ht','tva','montant_ttc','statut','date_emission'],order:'date_emission'},
  rendez_vous:{label:'Rendez-vous',cols:['titre','debut','fin','statut'],order:'debut'},
  paiements:{label:'Paiements',cols:['montant','date_paiement','moyen','statut','reference'],order:'date_paiement'}
 };
@@ -125,7 +125,7 @@ async function loadTable(){
 function renderRows(){
  const d=defs[current],term=$('search').value.trim().toLocaleLowerCase('fr');
  const filtered=rows.filter(r=>!term||Object.values(r).some(v=>pretty(v).toLocaleLowerCase('fr').includes(term)));
- $('tbody').innerHTML=filtered.map(r=>'<tr>'+d.cols.map(c=>'<td>'+(current==='devis'&&c==='statut'?'<select class="statusSelect" data-id="'+esc(r.id)+'"><option value="brouillon" '+(r.statut==='brouillon'?'selected':'')+'>Brouillon</option><option value="envoye" '+(r.statut==='envoye'?'selected':'')+'>Envoyé</option><option value="accepte" '+(r.statut==='accepte'?'selected':'')+'>Accepté</option><option value="refuse" '+(r.statut==='refuse'?'selected':'')+'>Refusé</option><option value="annule" '+(r.statut==='annule'?'selected':'')+'>Annulé</option></select>':esc(pretty(r[c])))+'</td>').join('')+'</tr>').join('')||`<tr><td class="empty" colspan="${d.cols.length}">Aucun résultat.</td></tr>`;
+ $('tbody').innerHTML=filtered.map(r=>'<tr>'+d.cols.map(c=>'<td>'+esc(pretty(r[c]))+'</td>').join('')+'</tr>').join('')||`<tr><td class="empty" colspan="${d.cols.length}">Aucun résultat.</td></tr>`;
  msg('dataMsg',filtered.length+' résultat(s) affiché(s) sur '+rows.length+' chargé(s), maximum 500.');
 }
 function showOnly(section){['login','forgot','reset','app'].forEach(id=>$(id).classList.toggle('hidden',id!==section));}
@@ -167,7 +167,6 @@ $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBt
 $('logout').addEventListener('click',async()=>{await sb.auth.signOut();showOnly('login');await verify()});
 $('refresh').addEventListener('click',loadAll);
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(!b)return;current=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));loadTable()});
-$('tbody').addEventListener('change',async e=>{const sel=e.target.closest('.statusSelect');if(!sel)return;const old=rows.find(r=>String(r.id)===sel.dataset.id)?.statut;sel.disabled=true;const {error}=await sb.from('devis').update({statut:sel.value}).eq('id',sel.dataset.id);sel.disabled=false;if(error){msg('dataMsg','Modification impossible : '+error.message);sel.value=old||'brouillon';return}msg('dataMsg','Statut du devis mis à jour.');await loadTable()});
 $('search').addEventListener('input',renderRows);$('clearSearch').addEventListener('click',()=>{$('search').value='';renderRows()});
 $('clientForm').addEventListener('submit',async e=>{e.preventDefault();$('clientBtn').disabled=true;msg('clientMsg','Enregistrement…');const f=new FormData(e.target);const obj=Object.fromEntries(f);Object.keys(obj).forEach(k=>{if(!obj[k])delete obj[k]});const {error}=await sb.from('clients').insert([obj]);$('clientBtn').disabled=false;if(error)msg('clientMsg','Erreur : '+error.message);else{e.target.reset();msg('clientMsg','Client enregistré avec succès.');await loadAll()}});
 $('quoteForm').addEventListener('submit',async e=>{e.preventDefault();$('quoteBtn').disabled=true;msg('quoteMsg','Création du devis…');const f=new FormData(e.target),ht=Number(f.get('montant_ht')),tva=Number(f.get('tva'));if(!Number.isFinite(ht)||!Number.isFinite(tva)||ht<0||tva<0||tva>100){msg('quoteMsg','Vérifiez le montant HT et le taux de TVA.');$('quoteBtn').disabled=false;return}
