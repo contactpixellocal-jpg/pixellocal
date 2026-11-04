@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Administration — PixelLocal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:#17233b;background:#f3f6fb}
+*{box-sizing:border-box}body{margin:0}.bar{background:#101d36;color:#fff;padding:17px 20px}
+.wrap{max-width:1180px;margin:26px auto;padding:0 16px}.barin{max-width:1180px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+a{color:inherit}.bar a{color:#fff;text-decoration:none}.brand{font-weight:800;letter-spacing:.2px}
+.card{background:#fff;border:1px solid #e0e7f0;border-radius:16px;padding:20px;margin:15px 0;box-shadow:0 6px 22px #13294b08}
+h1,h2{margin:0 0 8px}h1{font-size:25px}h2{font-size:19px}.muted,.notice{color:#64748b}.muted{margin:4px 0 0}
+.field{display:grid;gap:6px;margin:10px 0}.field input,.field select,.field textarea,.search,.statusSelect{padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit;width:100%;background:#fff}
+button{background:#1478e8;color:#fff;border:0;padding:11px 15px;border-radius:9px;font-weight:700;cursor:pointer}
+button.secondary{background:#e8eef6;color:#17233b}button.danger{background:#fff0f0;color:#b42318}button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px}
+.metric{font-size:27px;font-weight:800;color:#101d36;margin-top:4px}.metricbox{padding:12px;border-radius:12px;background:#f7f9fc}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}.tabs button{background:#e8eef6;color:#17233b}.tabs button.active{background:#1478e8;color:#fff}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}td,th{text-align:left;padding:12px;border-bottom:1px solid #e8edf3;font-size:13px;vertical-align:top;max-width:260px;overflow-wrap:anywhere}th{color:#64748b;background:#fafbfd}
+.hidden{display:none!important}.notice{font-size:13px;min-height:18px}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}.toolbar .search{max-width:340px}
+.pill{display:inline-block;background:#edf4ff;color:#245b9b;padding:4px 9px;border-radius:20px;font-size:12px}
+.empty{text-align:center;padding:25px;color:#64748b}
+@media(max-width:600px){.card{padding:15px}.wrap{margin:14px auto}.bar{padding:15px}.toolbar .search{max-width:none;flex:1}}
+</style></head>
+<body>
+<header class="bar"><div class="barin"><div class="brand">PixelLocal · Administration</div><a href="/">Voir le site ↗</a></div></header>
+<main class="wrap">
+<section id="login" class="card">
+<h1>Connexion administrateur</h1><p class="muted">Connectez-vous avec le compte administrateur autorisé dans Supabase.</p>
+<form id="loginForm"><div class="field"><label for="email">Adresse e-mail</label><input id="email" type="email" required autocomplete="username" value="contact.pixellocal@gmail.com"></div>
+<div class="field"><label for="password">Mot de passe</label><input id="password" type="password" required autocomplete="current-password"></div>
+<button id="loginBtn">Se connecter</button> <button type="button" class="secondary" id="showForgot"
+onclick="document.getElementById('login').classList.add('hidden');document.getElementById('forgot').classList.remove('hidden');document.getElementById('forgotEmail').value=document.getElementById('email').value.trim();document.getElementById('forgotMsg').textContent='';">
+Mot de passe oublié ?</button><p id="loginMsg" class="notice" role="status"></p></form></section>
+<section id="forgot" class="card hidden">
+<h1>Réinitialiser le mot de passe</h1>
+<p class="muted">Indique l’adresse e-mail de ton compte administrateur. Supabase t’enverra un lien pour choisir un nouveau mot de passe.</p>
+<form id="forgotForm">
+<div class="field"><label for="forgotEmail">Adresse e-mail</label><input id="forgotEmail" type="email" required autocomplete="email"></div>
+<button type="button" id="forgotBtn" onclick="window.pixelLocalSendReset()">Envoyer le lien de réinitialisation</button>
+<button type="button" class="secondary" id="backLogin" style="margin-left:8px">Retour à la connexion</button>
+<p id="forgotMsg" class="notice" role="status"></p>
+</form></section>
+<section id="reset" class="card hidden">
+<h1>Choisir un nouveau mot de passe</h1>
+<p class="muted">Saisis ton nouveau mot de passe administrateur.</p>
+<form id="resetForm">
+<div class="field"><label for="newPassword">Nouveau mot de passe</label><input id="newPassword" type="password" minlength="8" required autocomplete="new-password"></div>
+<div class="field"><label for="confirmPassword">Confirmer le mot de passe</label><input id="confirmPassword" type="password" minlength="8" required autocomplete="new-password"></div>
+<button id="resetBtn">Enregistrer le nouveau mot de passe</button>
+<p id="resetMsg" class="notice" role="status"></p>
+</form></section>
+<section id="app" class="hidden">
+<div class="row"><div><h1>Tableau de bord</h1><p class="muted" id="who"></p></div><button class="secondary" id="logout">Déconnexion</button></div>
+<div class="card"><div class="row"><h2>Vue d’ensemble</h2><button class="secondary" id="refresh">↻ Actualiser</button></div><div class="grid" id="metrics"></div></div>
+<div class="card">
+<div class="tabs" id="tabs">
+<button data-tab="demandes" class="active">Demandes</button><button data-tab="clients">Clients</button><button data-tab="devis">Devis</button><button data-tab="rendez_vous">Rendez-vous</button><button data-tab="paiements">Paiements</button>
+</div>
+<div class="row" style="margin-top:20px"><div><h2 id="tableTitle">Demandes reçues</h2><p class="muted" id="tableHint">Données enregistrées dans votre espace PixelLocal.</p></div></div>
+<div class="toolbar"><input id="search" class="search" type="search" placeholder="Rechercher dans les résultats…"><button id="clearSearch" class="secondary">Effacer</button><button id="export" class="secondary">Exporter CSV</button></div>
+<div class="tablewrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div><p id="dataMsg" class="notice" role="status"></p>
+</div>
+<div class="card"><h2>Ajouter un client</h2><p class="muted">Le client sera enregistré dans la table « clients ».</p>
+<form id="clientForm" class="grid">
+<div class="field"><label for="c_nom">Nom *</label><input id="c_nom" name="nom" required maxlength="120"></div>
+<div class="field"><label for="c_entreprise">Entreprise</label><input id="c_entreprise" name="entreprise" maxlength="160"></div>
+<div class="field"><label for="c_email">E-mail</label><input id="c_email" name="email" type="email" maxlength="200"></div>
+<div class="field"><label for="c_tel">Téléphone</label><input id="c_tel" name="telephone" maxlength="40"></div><div class="field"><label for="c_notes">Notes CRM</label><input id="c_notes" name="notes" maxlength="1000" placeholder="Suivi commercial interne"></div>
+<div class="field" style="align-self:end"><button id="clientBtn">Enregistrer le client</button></div></form><p id="clientMsg" class="notice" role="status"></p></div>
+<div class="card"><h2>Créer un devis</h2><p class="muted">Le devis est créé en brouillon. Le montant TTC est calculé automatiquement.</p>
+<form id="quoteForm" class="grid">
+<div class="field"><label for="q_client">Client (ID UUID, facultatif)</label><input id="q_client" name="client_id" placeholder="Collez l’identifiant UUID du client"></div>
+<div class="field"><label for="q_title">Titre *</label><input id="q_title" name="titre" required maxlength="180"></div>
+<div class="field"><label for="q_ht">Montant HT (€) *</label><input id="q_ht" name="montant_ht" type="number" min="0" step="0.01" required></div>
+<div class="field"><label for="q_tva">TVA (%)</label><input id="q_tva" name="tva" type="number" min="0" max="100" step="0.01" value="20" required></div>
+<div class="field" style="align-self:end"><button id="quoteBtn">Créer le devis</button></div></form><p id="quoteMsg" class="notice" role="status"></p></div>
+<p class="notice">Sécurité : l’accès aux données doit être protégé par les règles RLS de Supabase. La clé publique du navigateur ne remplace jamais ces règles.</p>
+</section></main>
+<script>
+const SUPABASE_URL='https://kynmhupklqprdrybfohy.supabase.co';
+const KEY='sb_publishable_XAYIHyppQwjITIDPbTlpbA_tY-N9fjW';
+if(!window.supabase){alert('Le service de connexion ne charge pas. Vérifie ta connexion Internet puis actualise la page.');}
+const sb=window.supabase ? window.supabase.createClient(SUPABASE_URL,KEY) : null;
+const $=id=>document.getElementById(id);
+let current='demandes', rows=[], columns=[];
+const defs={
+ demandes:{label:'Demandes reçues',cols:['nom','entreprise','email','telephone','offre','statut','created_at'],order:'created_at'},
+ clients:{label:'Clients',cols:['nom','entreprise','email','telephone','created_at'],order:'created_at'},
+ devis:{label:'Devis',cols:['numero','titre','client_id','montant_ht','tva','montant_ttc','statut','date_emission'],order:'date_emission'},
+ rendez_vous:{label:'Rendez-vous',cols:['titre','debut','fin','statut'],order:'debut'},
+ paiements:{label:'Paiements',cols:['montant','date_paiement','moyen','statut','reference'],order:'date_paiement'}
+};
+function msg(id,s){$(id).textContent=s}
+function esc(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function pretty(v){if(v===null||v===undefined||v==='')return '—';if(typeof v==='object')return JSON.stringify(v);return String(v)}
+async function verify(){
+ const {data:{user},error}=await sb.auth.getUser();
+ if(error||!user){$('login').classList.remove('hidden');$('app').classList.add('hidden');return}
+ const {data:profile,error:profileError}=await sb.from('profils').select('role,email').eq('id',user.id).maybeSingle();
+ if(profileError||profile?.role!=='admin'){await sb.auth.signOut();$('login').classList.remove('hidden');$('app').classList.add('hidden');msg('loginMsg','Ce compte ne possède pas le rôle administrateur.');return}
+ $('login').classList.add('hidden');$('app').classList.remove('hidden');$('who').textContent='Connecté : '+(user.email||'administrateur');await loadAll();
+}
+async function countTable(t){const {count,error}=await sb.from(t).select('*',{count:'exact',head:true});return error?null:(count??0)}
+async function loadAll(){
+ $('metrics').innerHTML='<div class="muted">Chargement des indicateurs…</div>';
+ const names=Object.keys(defs), counts=await Promise.all(names.map(countTable));
+ $('metrics').innerHTML=names.map((n,i)=>`<div class="metricbox"><div class="muted">${esc(defs[n].label)}</div><div class="metric">${counts[i]===null?'—':counts[i]}</div></div>`).join('');
+ await loadTable();
+}
+async function loadTable(){
+ const d=defs[current];$('tableTitle').textContent=d.label;
+ $('thead').innerHTML='<tr>'+d.cols.map(c=>'<th>'+esc(c.replaceAll('_',' '))+'</th>').join('')+'</tr>';
+ $('tbody').innerHTML='<tr><td class="empty" colspan="'+d.cols.length+'">Chargement…</td></tr>';msg('dataMsg','');
+ let query=sb.from(current).select('*').limit(500);
+ if(d.order)query=query.order(d.order,{ascending:false});
+ let result=await query;
+ // Certains schémas n’ont pas le champ de tri prévu : on retente sans tri.
+ if(result.error&&d.order)result=await sb.from(current).select('*').limit(500);
+ if(result.error){rows=[];renderRows();msg('dataMsg','Impossible de charger « '+current+' » : '+result.error.message+' — vérifiez les tables et les règles RLS dans Supabase.');return}
+ rows=result.data||[];renderRows();
+}
+function renderRows(){
+ const d=defs[current],term=$('search').value.trim().toLocaleLowerCase('fr');
+ const filtered=rows.filter(r=>!term||Object.values(r).some(v=>pretty(v).toLocaleLowerCase('fr').includes(term)));
+ $('tbody').innerHTML=filtered.map(r=>'<tr>'+d.cols.map(c=>'<td>'+(current==='devis'&&c==='statut'?'<select class="statusSelect" data-id="'+esc(r.id)+'"><option value="brouillon" '+(r.statut==='brouillon'?'selected':'')+'>Brouillon</option><option value="envoye" '+(r.statut==='envoye'?'selected':'')+'>Envoyé</option><option value="accepte" '+(r.statut==='accepte'?'selected':'')+'>Accepté</option><option value="refuse" '+(r.statut==='refuse'?'selected':'')+'>Refusé</option><option value="annule" '+(r.statut==='annule'?'selected':'')+'>Annulé</option></select>':esc(pretty(r[c])))+'</td>').join('')+'</tr>').join('')||`<tr><td class="empty" colspan="${d.cols.length}">Aucun résultat.</td></tr>`;
+ msg('dataMsg',filtered.length+' résultat(s) affiché(s) sur '+rows.length+' chargé(s), maximum 500.');
+}
+function showOnly(section){['login','forgot','reset','app'].forEach(id=>$(id).classList.toggle('hidden',id!==section));}
+$('showForgot').addEventListener('click',()=>{
+ $('forgotEmail').value=$('email').value.trim();
+ msg('forgotMsg','');
+});
+$('backLogin').addEventListener('click',()=>showOnly('login'));
+window.pixelLocalSendReset = async function(){
+ const button=$('forgotBtn');
+ const email=$('forgotEmail').value.trim();
+ button.disabled=true;
+ msg('forgotMsg','Envoi en cours…');
+ try{
+  if(!sb) throw new Error('Supabase ne s’est pas chargé. Actualise la page.');
+  if(!email) throw new Error('Saisis ton adresse e-mail.');
+  const redirectTo=window.location.origin+window.location.pathname;
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error) throw error;
+  msg('forgotMsg','Demande envoyée. Vérifie ta boîte de réception et les courriers indésirables.');
+ }catch(err){
+  msg('forgotMsg','Échec de l’envoi : '+(err && err.message ? err.message : String(err)));
+ }finally{
+  button.disabled=false;
+ }
+};
+
+$('resetForm').addEventListener('submit',async e=>{
+ e.preventDefault();const password=$('newPassword').value,confirm=$('confirmPassword').value;
+ if(password.length<8){msg('resetMsg','Le mot de passe doit contenir au moins 8 caractères.');return}
+ if(password!==confirm){msg('resetMsg','Les deux mots de passe ne correspondent pas.');return}
+ $('resetBtn').disabled=true;msg('resetMsg','Mise à jour du mot de passe…');
+ const {error}=await sb.auth.updateUser({password});$('resetBtn').disabled=false;
+ if(error){msg('resetMsg','Erreur : '+error.message);return}
+ $('resetForm').reset();msg('resetMsg','Mot de passe modifié. Tu peux maintenant te connecter.');
+ await sb.auth.signOut();showOnly('login');
+});
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginBtn').disabled=true;msg('loginMsg','Connexion…');const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});$('loginBtn').disabled=false;if(error)msg('loginMsg','Connexion impossible : '+error.message);else{msg('loginMsg','');await verify()}});
+$('logout').addEventListener('click',async()=>{await sb.auth.signOut();showOnly('login');await verify()});
+$('refresh').addEventListener('click',loadAll);
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(!b)return;current=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));loadTable()});
+$('tbody').addEventListener('change',async e=>{const sel=e.target.closest('.statusSelect');if(!sel)return;const old=rows.find(r=>String(r.id)===sel.dataset.id)?.statut;sel.disabled=true;const {error}=await sb.from('devis').update({statut:sel.value}).eq('id',sel.dataset.id);sel.disabled=false;if(error){msg('dataMsg','Modification impossible : '+error.message);sel.value=old||'brouillon';return}msg('dataMsg','Statut du devis mis à jour.');await loadTable()});
+$('search').addEventListener('input',renderRows);$('clearSearch').addEventListener('click',()=>{$('search').value='';renderRows()});
+$('clientForm').addEventListener('submit',async e=>{e.preventDefault();$('clientBtn').disabled=true;msg('clientMsg','Enregistrement…');const f=new FormData(e.target);const obj=Object.fromEntries(f);Object.keys(obj).forEach(k=>{if(!obj[k])delete obj[k]});const {error}=await sb.from('clients').insert([obj]);$('clientBtn').disabled=false;if(error)msg('clientMsg','Erreur : '+error.message);else{e.target.reset();msg('clientMsg','Client enregistré avec succès.');await loadAll()}});
+$('quoteForm').addEventListener('submit',async e=>{e.preventDefault();$('quoteBtn').disabled=true;msg('quoteMsg','Création du devis…');const f=new FormData(e.target),ht=Number(f.get('montant_ht')),tva=Number(f.get('tva'));if(!Number.isFinite(ht)||!Number.isFinite(tva)||ht<0||tva<0||tva>100){msg('quoteMsg','Vérifiez le montant HT et le taux de TVA.');$('quoteBtn').disabled=false;return}
+ const obj={titre:String(f.get('titre')).trim(),montant_ht:ht,tva,montant_ttc:Math.round(ht*(1+tva/100)*100)/100};const cid=String(f.get('client_id')||'').trim();if(cid)obj.client_id=cid;
+ const {error}=await sb.from('devis').insert([obj]);$('quoteBtn').disabled=false;if(error)msg('quoteMsg','Erreur : '+error.message);else{e.target.reset();$('q_tva').value='20';msg('quoteMsg','Devis créé en brouillon.');await loadAll()}});
+$('export').addEventListener('click',()=>{const d=defs[current];if(!rows.length){msg('dataMsg','Aucune donnée à exporter.');return}const csv=[d.cols.join(';'),...rows.map(r=>d.cols.map(c=>'"'+String(pretty(r[c])).replace(/"/g,'""')+'"').join(';'))].join('\\r\\n');const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pixel-local-'+current+'.csv';a.click();URL.revokeObjectURL(a.href)});
+sb.auth.onAuthStateChange((event,session)=>{
+ if(event==='PASSWORD_RECOVERY'){showOnly('reset');msg('resetMsg','');}
+ else if(event==='SIGNED_OUT'){showOnly('login');}
+});
+(async()=>{
+ const {data:{session}}=await sb.auth.getSession();
+ if(session && (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery'))){showOnly('reset');}
+ else{await verify();}
+})();
+</script></body></html>

@@ -1,0 +1,26 @@
+PIXELLOCAL — PACK V5 (site + administration + espace client)
+
+CONTENU DU ZIP
+- index.html : page d’accueil PixelLocal (conservée depuis le site amélioré).
+- admin.html : tableau de bord administrateur V4.
+- client.html : connexion et espace privé client.
+- migration_espace_client.sql : règles Supabase et liaison des comptes clients.
+
+IMPORTANT — ORDRE D’INSTALLATION
+1. Avant tout, garde une copie de ton site actuel.
+2. Dans Supabase, ouvre SQL Editor > New query.
+3. Ouvre migration_espace_client.sql, copie tout son contenu, colle-le dans la requête SQL puis clique RUN. Cette migration doit être exécutée une seule fois.
+4. Ensuite seulement, décompresse ce ZIP et déploie le contenu du dossier sur Netlify. Les fichiers index.html, admin.html et client.html doivent être à la racine du déploiement (pas dans un sous-dossier).
+5. Vérifie la page publique : https://pixellocal123.netlify.app/
+6. Administration : https://pixellocal123.netlify.app/admin.html
+7. Espace client : https://pixellocal123.netlify.app/client.html
+
+ACTIVATION D’UN COMPTE CLIENT
+- Cette version ne crée PAS automatiquement les comptes et n’envoie PAS encore d’invitations e-mail. Il faut créer le compte dans Supabase Authentication, créer son profil dans public.profils avec role='client', puis renseigner l’UUID du compte dans clients.user_id pour la fiche client correspondante.
+- Ne jamais placer la clé service_role dans un fichier HTML ou dans Netlify. La clé publique du navigateur reste protégée par les règles RLS.
+- Les clients ont uniquement accès en lecture aux lignes qui leur appartiennent. L’administrateur conserve les droits de gestion.
+
+À SAVOIR
+- La page d’accueil est conservée et le lien Espace client a été ajouté au menu.
+- Le formulaire public de la page d’accueil existante prépare toujours un e-mail ; cette version ne le transforme pas en formulaire Supabase.
+- Vérifie les règles et les données dans Supabase avant d’ouvrir les comptes clients.
